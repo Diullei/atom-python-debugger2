@@ -73,10 +73,19 @@ class PythonDebuggerView extends View
     @stopApp() if @backendDebugger
     @debuggedFileArgs = @getInputArguments()
     console.log @debuggedFileArgs
+    @clearLines()
     if @pathsNotSet()
       @askForPaths()
       return
     @runBackendDebugger()
+
+  clearLines: ->
+    editor = atom.workspace.getActiveTextEditor()
+    view = atom.views.getView(editor)
+    lines = view.shadowRoot.querySelectorAll('.line-debug-yellow')
+    for line in lines
+      line.className = line.className.replace(/\bline-debug-yellow\b/,'');
+
 
   # Extract the file name and line number output by the debugger.
   processDebuggerOutput: (data) ->
@@ -101,6 +110,11 @@ class PythonDebuggerView extends View
       options = {initialLine: lineNumber-1, initialColumn:0}
       atom.workspace.open(fileName, options) if fs.existsSync(fileName)
       # TODO: add decoration to current line?
+      @clearLines()
+      editor = atom.workspace.getActiveTextEditor()
+      view = atom.views.getView(editor)
+      line = view.shadowRoot.querySelectorAll('.lines .line[data-screen-row="' + (lineNumber - 1) + '"]')[0]
+      line.className += ' line-debug-yellow'
 
     @addOutput(data_str.trim())
 
@@ -121,6 +135,7 @@ class PythonDebuggerView extends View
     @backendDebugger.stderr.on "data", (data) =>
       @processDebuggerOutput(data)
     @backendDebugger.on "exit", (code) =>
+      @clearLines()
       @addOutput("debugger exits with code: " + code.toString().trim())
 
   stopApp: ->
@@ -232,5 +247,6 @@ class PythonDebuggerView extends View
 
   detach: ->
     console.log "detached"
+    @clearLines()
     @panel.destroy()
     @panel = null
